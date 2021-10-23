@@ -9,5 +9,8 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     _instruction_data: &[u8],
 ) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let source_info = next_account_info(account_info_iter)?;
+
     Ok(())
 }
