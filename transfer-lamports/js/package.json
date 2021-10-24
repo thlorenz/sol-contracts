@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "description": "JavaScript modules exercising our transfer-lamports contract",
   "main": "index.js",
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json"
+  },
   "repository": "git@github.com:thlorenz/sol-contracts.git",
   "author": "Thorsten Lorenz <thlorenz@gmx.de>",
   "license": "MIT",
