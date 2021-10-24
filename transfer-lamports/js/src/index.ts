@@ -1,4 +1,11 @@
-import { getProgramKeypair, logExpl, logInfo, logSeparator } from './utils'
+import {
+  getProgramKeypair,
+  logDebug,
+  logExpl,
+  logInfo,
+  logSeparator,
+  prettyLamports,
+} from './utils'
 
 import {
   AccountMeta,
@@ -45,24 +52,52 @@ async function transferSolsWithSystemProgram(
 async function transferSolsWithCustomProgram(
   conn: Conn,
   programId: PublicKey,
-  feePayer: PublicKey,
+  payer: Keypair,
   receiver: PublicKey,
-  signer: Keypair,
   _sols: number
 ) {
-  const accounts: AccountMeta[] = [
-    { pubkey: feePayer, isSigner: true, isWritable: true },
+  const sols = 5
+  const lamports = LAMPORTS_PER_SOL * sols
+
+  // We don't want to give ownership of the entire payer account to our program.
+  // Instead we create a tmp account, transfer the needed funds into it from the
+  // payer account. Then we assign ownership of it to our program and execute
+  // the instruction that will transfer all its funds to the receiver.
+
+  // 1. Create tmp account
+  const tmpAccount = Keypair.generate()
+  await conn.initAccount(tmpAccount.publicKey, {
+    lamports,
+    rentExcempt: false,
+  })
+  // 2. Transfer the needed amount from the payer into that tmp account
+  const transferIx = SystemProgram.transfer({
+    lamports,
+    fromPubkey: payer.publicKey,
+    toPubkey: tmpAccount.publicKey,
+  })
+
+  // 3. Give ownership of that tmp account to the program
+  const assignIx = SystemProgram.assign({
+    programId,
+    accountPubkey: tmpAccount.publicKey,
+  })
+
+  // 4. Instruct it to transfer the amount from the tmp account to the receiver
+  const programAccs: AccountMeta[] = [
+    { pubkey: tmpAccount.publicKey, isSigner: true, isWritable: true },
     { pubkey: receiver, isSigner: false, isWritable: true },
   ]
 
-  const assignIx = SystemProgram.assign({ programId, accountPubkey: feePayer })
-  const transferIx = new TransactionInstruction({ keys: accounts, programId })
+  const programIx = new TransactionInstruction({ keys: programAccs, programId })
 
-  const transaction = new Transaction({ feePayer })
+  // 5. Init the transaction
+  const transaction = new Transaction({ feePayer: payer.publicKey })
+    .add(transferIx)
+    .add(assignIx)
+    .add(programIx)
 
-  transaction.add(assignIx).add(transferIx)
-
-  return conn.sendAndConfirmTransaction(transaction, [signer])
+  return conn.sendAndConfirmTransaction(transaction, [payer, tmpAccount])
 }
 
 async function main() {
@@ -84,7 +119,7 @@ async function main() {
   logExpl(conn.solanaExplorerAddressUrl(receiver.publicKey))
 
   logInfo('Initializing payer')
-  await conn.initAccount(payer.publicKey, { lamports: 5 * LAMPORTS_PER_SOL })
+  await conn.initAccount(payer.publicKey, { lamports: 50 * LAMPORTS_PER_SOL })
   logSeparator()
 
   logInfo('Initializing receiver')
@@ -97,9 +132,8 @@ async function main() {
   await transferSolsWithCustomProgram(
     conn,
     program.publicKey,
-    payer.publicKey,
-    receiver.publicKey,
     payer,
+    receiver.publicKey,
     5
   )
   logSeparator()
