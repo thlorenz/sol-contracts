@@ -2,9 +2,10 @@
   "name": "transfer-lamports",
   "version": "0.0.0",
   "description": "JavaScript modules exercising our transfer-lamports contract",
-  "main": "index.js",
+  "main": "src/transfer-lamports.ts",
   "scripts": {
-    "build": "tsc -p ./tsconfig.json"
+    "build": "tsc -p ./tsconfig.json",
+    "start": "DEBUG=* esr ./src/main.ts 4"
   },
   "repository": "git@github.com:thlorenz/sol-contracts.git",
   "author": "Thorsten Lorenz <thlorenz@gmx.de>",
