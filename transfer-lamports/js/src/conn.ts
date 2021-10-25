@@ -9,6 +9,7 @@ import {
   EXPLORER_ADDRESS,
   EXPLORER_TX,
   LOCAL_CLUSTER,
+  LOCAL_CLUSTER_URL,
   logConfirmedTransaction,
   logDebug,
   logExpl,
@@ -90,6 +91,17 @@ export class Conn {
     logDebug(`Balance ${account.toBase58()}: ${prettyLamports(balance)}`)
   }
 
+  async getBalance(account: PublicKey) {
+    return this._connection.getBalance(account)
+  }
+
+  async getBalanceSol(account: PublicKey) {
+    const lamports = await this.getBalance(account)
+    const sol100 = lamports / (LAMPORTS_PER_SOL / 100)
+
+    return Math.round(sol100) / 100
+  }
+
   async logAccountInfo(account: PublicKey) {
     const accountInfo = await this._connection.getAccountInfo(account)
     if (accountInfo == null) {
@@ -155,6 +167,10 @@ export class Conn {
   // -----------------
   // Cluster
   // -----------------
+  static solanaClusterUrl() {
+    // TODO: detect devnet as well
+    return LOCAL_CLUSTER_URL
+  }
   static solanaCluster() {
     // TODO: detect devnet as well
     return LOCAL_CLUSTER
@@ -167,6 +183,6 @@ export class Conn {
   }
 
   static toSolanaCluster() {
-    return new Conn(new Connection(Conn.solanaCluster(), 'confirmed'))
+    return new Conn(new Connection(Conn.solanaClusterUrl(), 'confirmed'))
   }
 }

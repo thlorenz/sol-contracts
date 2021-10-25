@@ -104,10 +104,12 @@ export function logSeparator() {
   )
 }
 
+export const LOCAL_CLUSTER_URL = 'http://127.0.0.1:8899'
+
 // -----------------
 // Solana Explorer
 // -----------------
 export const EXPLORER_ROOT = 'https://explorer.solana.com'
 export const EXPLORER_TX = `${EXPLORER_ROOT}/tx`
 export const EXPLORER_ADDRESS = `${EXPLORER_ROOT}/address`
-export const LOCAL_CLUSTER = `cluster=custom&customUrl=http%3A%2F%2F127.0.0.1%3A8899`
+export const LOCAL_CLUSTER = `cluster=custom&customUrl=${LOCAL_CLUSTER_URL}`

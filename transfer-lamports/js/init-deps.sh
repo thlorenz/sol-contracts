@@ -3,9 +3,10 @@
 yarn add -D               \
     @tsconfig/recommended \
     @types/node           \
-    debug                 \
+    @types/debug          \
     prettier              \
-    supports-color        \
+    tape                  \
+    @types/tape           \
     ts-node               \
     tslib                 \
     typescript 
@@ -13,5 +14,6 @@ yarn add -D               \
 yarn add            \
     borsh           \
     bs58            \
-    @solana/web3.js \
-    @types/debug    \
+    debug           \
+    supports-color  \
+    @solana/web3.js 
