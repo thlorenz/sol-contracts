@@ -9,10 +9,12 @@ import {
   EXPLORER_ADDRESS,
   EXPLORER_TX,
   LOCAL_CLUSTER,
+  logConfirmedTransaction,
   logDebug,
   logExpl,
   logTrace,
   prettyAccountInfo,
+  prettyConfirmedTransaction,
   prettyLamports,
 } from './utils'
 import { strict as assert } from 'assert'
@@ -65,6 +67,19 @@ export class Conn {
     logExpl(this.solanaExplorerTxUrl(transactionSig))
 
     return transactionSig
+  }
+
+  async getConfirmedTransaction(transactionSig: string) {
+    return this._connection.getConfirmedTransaction(transactionSig)
+  }
+
+  async logConfirmedTransaction(transactionSig: string) {
+    const transactionInfo = await this.getConfirmedTransaction(transactionSig)
+    if (transactionInfo == null) {
+      logDebug(`ConfirmedTransaction { NOT FOUND, : ${transactionSig} }`)
+    } else {
+      logConfirmedTransaction(transactionSig, transactionInfo)
+    }
   }
 
   // -----------------
@@ -140,14 +155,18 @@ export class Conn {
   // -----------------
   // Cluster
   // -----------------
-  solanaCluster() {
+  static solanaCluster() {
     // TODO: detect devnet as well
     return LOCAL_CLUSTER
   }
   solanaExplorerTxUrl(key: string) {
-    return `${EXPLORER_TX}/${key}?${this.solanaCluster()}`
+    return `${EXPLORER_TX}/${key}?${Conn.solanaCluster()}`
   }
   solanaExplorerAddressUrl(pubkey: PublicKey) {
-    return `${EXPLORER_ADDRESS}/${pubkey.toBase58()}?${this.solanaCluster()}`
+    return `${EXPLORER_ADDRESS}/${pubkey.toBase58()}?${Conn.solanaCluster()}`
+  }
+
+  static toSolanaCluster() {
+    return new Conn(new Connection(Conn.solanaCluster(), 'confirmed'))
   }
 }

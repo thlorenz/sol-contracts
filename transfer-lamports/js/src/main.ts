@@ -55,13 +55,16 @@ async function main() {
   await logParties(conn, payer.publicKey, receiver.publicKey)
   logSeparator()
 
-  await transferLamports(
+  const txSig = await transferLamports(
     conn,
     program.publicKey,
     payer,
     receiver.publicKey,
     SOLS * LAMPORTS_PER_SOL
   )
+  logSeparator()
+
+  await conn.logConfirmedTransaction(txSig)
   logSeparator()
 
   await logParties(conn, payer.publicKey, receiver.publicKey)
