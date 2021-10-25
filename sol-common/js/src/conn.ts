@@ -9,12 +9,16 @@ import {
   EXPLORER_ADDRESS,
   EXPLORER_TX,
   LOCAL_CLUSTER,
+<<<<<<< HEAD:sol-common/js/src/conn.ts
   LOCAL_CLUSTER_URL,
+=======
+>>>>>>> cd90b3f (js: added transaction logging):transfer-lamports/js/src/conn.ts
   logConfirmedTransaction,
   logDebug,
   logExpl,
   logTrace,
   prettyAccountInfo,
+  prettyConfirmedTransaction,
   prettyLamports,
 } from './utils'
 import { strict as assert } from 'assert'
@@ -166,10 +170,13 @@ export class Conn {
   // -----------------
   // Cluster
   // -----------------
+<<<<<<< HEAD:sol-common/js/src/conn.ts
   static solanaClusterUrl() {
     // TODO: detect devnet as well
     return LOCAL_CLUSTER_URL
   }
+=======
+>>>>>>> cd90b3f (js: added transaction logging):transfer-lamports/js/src/conn.ts
   static solanaCluster() {
     // TODO: detect devnet as well
     return LOCAL_CLUSTER
@@ -182,6 +189,10 @@ export class Conn {
   }
 
   static toSolanaCluster() {
+<<<<<<< HEAD:sol-common/js/src/conn.ts
     return new Conn(new Connection(Conn.solanaClusterUrl(), 'confirmed'))
+=======
+    return new Conn(new Connection(Conn.solanaCluster(), 'confirmed'))
+>>>>>>> cd90b3f (js: added transaction logging):transfer-lamports/js/src/conn.ts
   }
 }
