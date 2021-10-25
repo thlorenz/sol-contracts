@@ -10,6 +10,7 @@ trace-compute=[]
 
 [dependencies]
 solana-program = "1.8.0"
+sol-common= { path = "../../sol-common/rust" }
 
 [dev-dependencies]
 solana-program-test = "1.8.0"

@@ -1,3 +1,4 @@
+use sol_common::{compute, compute_fn};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -7,40 +8,6 @@ use solana_program::{
 };
 
 use crate::instruction::TransferInstruction;
-
-/// Total extra compute units used per compute! call    30 units
-///
-/// Breakdown:
-///     solana_program::msg!(concat!($msg, " {"))      ~22 units
-///     solana_program::log::sol_log_compute_units()    ~1 unit
-///     solana_program::msg!(" }")                      ~5 units
-#[cfg(feature = "trace-compute")]
-macro_rules! compute {
-    ($msg:expr=> $($tt:tt)*) => {
-        solana_program::msg!(concat!($msg, " {"));
-        solana_program::log::sol_log_compute_units();
-        $($tt)*
-        solana_program::log::sol_log_compute_units();
-        solana_program::msg!(concat!(" } // ", $msg));
-    };
-}
-
-#[cfg(not(feature = "trace-compute"))]
-macro_rules! compute {
-    ($msg:expr=> $($tt:tt)*) => { $($tt)* };
-}
-
-// TODO: this could be a procmacro allowing a simple #[compute_fn] on top of the fn declaration
-macro_rules! compute_fn {
-    ($msg:expr=> $($tt:tt)*) => {
-        solana_program::msg!(concat!($msg, " {"));
-        solana_program::log::sol_log_compute_units();
-        let res = { $($tt)* };
-        solana_program::log::sol_log_compute_units();
-        solana_program::msg!(concat!(" } // ", $msg));
-        res
-    };
-}
 
 pub fn process_instruction(
     _program_id: &Pubkey,
