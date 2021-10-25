@@ -4,4 +4,4 @@ test:
 test-trace: 
 	cargo test-bpf --features=trace-compute -- --test-threads 1
 
-.PHONY: test
+.PHONY: test test-trace

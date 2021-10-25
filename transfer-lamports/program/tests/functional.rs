@@ -1,7 +1,7 @@
 use solana_program::instruction::{AccountMeta, InstructionError};
 use solana_sdk::{account::Account, transaction::TransactionError};
 
-use transfer_lamports::processor::process_instruction;
+use transfer_lamports::{instruction::TransferInstruction, processor::process_instruction};
 use {
     solana_program::{instruction::Instruction, pubkey::Pubkey},
     solana_program_test::*,
@@ -10,9 +10,9 @@ use {
 };
 
 #[cfg(feature = "trace-compute")]
-const COMPUTE_UNITS: u64 = 1200;
+const COMPUTE_UNITS: u64 = 1400;
 #[cfg(not(feature = "trace-compute"))]
-const COMPUTE_UNITS: u64 = 1000;
+const COMPUTE_UNITS: u64 = 1200;
 
 // -----------------
 // Utils
@@ -23,6 +23,7 @@ async fn start_program(
     destination_pubkey: Pubkey,
     source_account: Account,
     destination_account: Account,
+    amount: u64,
     compute_units: Option<u64>,
 ) -> (ProgramTestContext, Instruction) {
     let mut program_test = ProgramTest::new(
@@ -37,9 +38,11 @@ async fn start_program(
     program_test.set_bpf_compute_max_units(compute_units.unwrap_or(COMPUTE_UNITS));
 
     let ctx = program_test.start_with_context().await;
-    let instruction = Instruction::new_with_bincode(
+    let transfer_ix = &TransferInstruction { amount };
+    let ix_data = &transfer_ix.pack();
+    let instruction = Instruction::new_with_bytes(
         program_id,
-        &(),
+        ix_data,
         vec![
             AccountMeta::new(source_pubkey, false),
             AccountMeta::new(destination_pubkey, false),
@@ -87,11 +90,12 @@ async fn assert_insufficient_funds(mut ctx: ProgramTestContext, transaction: Tra
 // -----------------
 #[tokio::test]
 async fn lamport_tx_success() {
+    let lamports = 9;
     let program_id = Pubkey::from_str("TransferLamports111111111111111111111111111").unwrap();
     let source_pubkey = Pubkey::new_unique();
     let destination_pubkey = Pubkey::new_unique();
     let source_account = Account {
-        lamports: 5,
+        lamports,
         owner: program_id,
         ..Account::default()
     };
@@ -106,6 +110,7 @@ async fn lamport_tx_success() {
         destination_pubkey,
         source_account,
         destination_account,
+        lamports,
         None,
     )
     .await;
@@ -120,22 +125,23 @@ async fn lamport_tx_success() {
     assert_eq!(
         account_balance(&mut ctx, source_pubkey).await,
         0,
-        "source looses 5 lamports"
+        "source looses transferred lamports"
     );
     assert_eq!(
         account_balance(&mut ctx, destination_pubkey).await,
-        10,
-        "destination gains 5 lamports"
+        5 + lamports,
+        "destination gains transferred lamports"
     );
 }
 
 #[tokio::test]
 async fn lamport_tx_not_enough_units() {
+    let lamports = 9;
     let program_id = Pubkey::from_str("TransferLamports111111111111111111111111111").unwrap();
     let source_pubkey = Pubkey::new_unique();
     let destination_pubkey = Pubkey::new_unique();
     let source_account = Account {
-        lamports: 5,
+        lamports,
         owner: program_id,
         ..Account::default()
     };
@@ -150,6 +156,7 @@ async fn lamport_tx_not_enough_units() {
         destination_pubkey,
         source_account,
         destination_account,
+        lamports,
         Some(500),
     )
     .await;
@@ -162,11 +169,12 @@ async fn lamport_tx_not_enough_units() {
 
 #[tokio::test]
 async fn lamport_tx_not_enough_source_lamports() {
+    let lamports = 9;
     let program_id = Pubkey::from_str("TransferLamports111111111111111111111111111").unwrap();
     let source_pubkey = Pubkey::new_unique();
     let destination_pubkey = Pubkey::new_unique();
     let source_account = Account {
-        lamports: 4,
+        lamports: lamports - 1,
         owner: program_id,
         ..Account::default()
     };
@@ -181,7 +189,8 @@ async fn lamport_tx_not_enough_source_lamports() {
         destination_pubkey,
         source_account,
         destination_account,
-        None,
+        lamports,
+        Some(COMPUTE_UNITS + 1000),
     )
     .await;
 

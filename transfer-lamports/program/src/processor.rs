@@ -6,6 +6,8 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+use crate::instruction::TransferInstruction;
+
 /// Total extra compute units used per compute! call    30 units
 ///
 /// Breakdown:
@@ -40,17 +42,18 @@ macro_rules! compute_fn {
     };
 }
 
-/// Total compute units measured:       138
-/// BPF instructions executed (interp): 900 (919 trace-compute)
-/// Compute units consumed:             900 (960 trace-compute)
-/// Max frame depth reached: 4
-/// Just process_instruction body       220 (353 trace-compute)
 pub fn process_instruction(
     _program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _instruction_data: &[u8],
+    instruction_data: &[u8],
 ) -> ProgramResult {
+    // 209 units total
     compute_fn! { "process_instruction" =>
+
+    // 66 units
+    compute! { "deserialize instruction" =>
+        let TransferInstruction { amount } = TransferInstruction::unpack(instruction_data)?;
+    }
 
     // 56 units
     compute! { "get account infos" =>
@@ -59,17 +62,17 @@ pub fn process_instruction(
         let destination_info = next_account_info(account_info_iter)?;
     }
 
-    // 82 units on success; 78 units on failure
+    // 82 units on success; >100 units on failure due to extra msg using format params
     // However handling the error incurs an overhead of ~32 units
     compute! { "execute transfer" =>
         let mut source_lamports = source_info.try_borrow_mut_lamports()?;
-        if **source_lamports < 5 {
-            msg!("source account has less than 5 lamports");
+        if **source_lamports < amount {
+            msg!("source account has less than {} lamports", amount);
             let err = Err(ProgramError::InsufficientFunds);
             return err;
         }
-        **source_lamports -= 5;
-        **destination_info.try_borrow_mut_lamports()? += 5;
+        **source_lamports -= amount;
+        **destination_info.try_borrow_mut_lamports()? += amount;
     }
 
     Ok(())
