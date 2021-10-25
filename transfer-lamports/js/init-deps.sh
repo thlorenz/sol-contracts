@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+
 yarn add -D               \
     @tsconfig/recommended \
     @types/node           \
@@ -7,13 +10,14 @@ yarn add -D               \
     prettier              \
     tape                  \
     @types/tape           \
-    ts-node               \
     tslib                 \
     typescript 
 
 yarn add            \
     borsh           \
-    bs58            \
     debug           \
     supports-color  \
     @solana/web3.js 
+
+mkdir -p $DIR/src && \
+( cd $DIR/src && ln -s ../../../sol-common/js/src/sol-common.ts)

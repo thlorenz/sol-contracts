@@ -15,7 +15,6 @@ import {
   logExpl,
   logTrace,
   prettyAccountInfo,
-  prettyConfirmedTransaction,
   prettyLamports,
 } from './utils'
 import { strict as assert } from 'assert'

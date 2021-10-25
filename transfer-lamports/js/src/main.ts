@@ -1,12 +1,16 @@
-import { getProgramKeypair, logExpl, logInfo, logSeparator } from './utils'
-
 import {
   Connection,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
 } from '@solana/web3.js'
-import { Conn } from './conn'
+import {
+  Conn,
+  getProgramKeypair,
+  logExpl,
+  logInfo,
+  logSeparator,
+} from './sol-common'
 import path from 'path'
 import { transferLamports } from './transfer-lamports'
 

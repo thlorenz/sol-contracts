@@ -1,7 +1,6 @@
 import { Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { getProgramKeypair } from './utils'
+import { Conn, getProgramKeypair } from './sol-common'
 
-import { Conn } from './conn'
 import { transferLamports } from './transfer-lamports'
 
 import test from 'tape'

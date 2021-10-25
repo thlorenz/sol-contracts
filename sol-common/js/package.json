@@ -1,12 +1,11 @@
 {
-  "name": "transfer-lamports",
+  "name": "sol-common",
   "version": "0.0.0",
-  "description": "JavaScript modules exercising our transfer-lamports contract",
-  "main": "src/transfer-lamports.ts",
+  "description": "Common utilities shared across the contract implementations.",
+  "main": "dist/sol-common.js",
+  "types": "src/sol-common.ts",
   "scripts": {
-    "build": "tsc -p ./tsconfig.json",
-    "start": "DEBUG=* esr ./src/main.ts 4",
-    "test": "esr ./src/transfer-lamports.test.ts"
+    "build": "tsc -p ./tsconfig.json"
   },
   "repository": "git@github.com:thlorenz/sol-contracts.git",
   "author": "Thorsten Lorenz <thlorenz@gmx.de>",
@@ -23,9 +22,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.30.0",
-    "@types/debug": "^4.1.7",
-    "@types/tape": "^4.13.2",
-    "borsh": "^0.6.0",
+    "debug": "^4.3.2",
     "supports-color": "^9.0.2"
   }
 }
