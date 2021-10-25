@@ -28,27 +28,6 @@ async function logParties(conn: Conn, payer: PublicKey, receiver: PublicKey) {
   await conn.logAccountInfo(receiver)
 }
 
-async function transferSolsWithSystemProgram(
-  conn: Conn,
-  feePayer: PublicKey,
-  receiver: PublicKey,
-  signer: Keypair,
-  sols: number
-) {
-  const transaction = new Transaction()
-  transaction.add(
-    SystemProgram.transfer({
-      fromPubkey: feePayer,
-      toPubkey: receiver,
-      lamports: LAMPORTS_PER_SOL * sols,
-    })
-  )
-  logInfo('Sending lamports from payer to receiver')
-  await conn.sendAndConfirmTransaction(transaction, [signer])
-
-  await logParties(conn, feePayer, receiver)
-}
-
 async function transferSolsWithCustomProgram(
   conn: Conn,
   programId: PublicKey,
@@ -89,7 +68,13 @@ async function transferSolsWithCustomProgram(
     { pubkey: receiver, isSigner: false, isWritable: true },
   ]
 
-  const programIx = new TransactionInstruction({ keys: programAccs, programId })
+  const data = Buffer.alloc(8)
+  data.writeBigUInt64LE(BigInt(lamports))
+  const programIx = new TransactionInstruction({
+    keys: programAccs,
+    programId,
+    data,
+  })
 
   // 5. Init the transaction
   const transaction = new Transaction({ feePayer: payer.publicKey })
@@ -101,7 +86,10 @@ async function transferSolsWithCustomProgram(
 }
 
 async function main() {
-  const program = getProgramKeypair(path.join(__dirname, '..'))
+  const program = getProgramKeypair(
+    path.join(__dirname, '..'),
+    'transfer_lamports'
+  )
   const payer = Keypair.generate()
   const receiver = Keypair.generate()
 

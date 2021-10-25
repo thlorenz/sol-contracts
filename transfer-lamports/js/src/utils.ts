@@ -12,8 +12,8 @@ const solFormatter = new Intl.NumberFormat('en-US', {
   currency: 'SOL',
 })
 
-export function getProgramKeypair(jsrooot: string) {
-  const privKey = require(`${jsrooot}/../program/target/deploy/transfer_lamports-keypair.json`)
+export function getProgramKeypair(jsrooot: string, program_name: string) {
+  const privKey = require(`${jsrooot}/../program/target/deploy/${program_name}-keypair.json`)
   return web.Keypair.fromSecretKey(Uint8Array.from(privKey))
 }
 
