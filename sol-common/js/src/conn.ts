@@ -1,4 +1,5 @@
 import web, {
+  Commitment,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
@@ -20,12 +21,15 @@ import {
   logConfirmedTransaction,
   logDebug,
   logExpl,
+  logInfo,
   logTrace,
   prettyAccountInfo,
   prettyLamports,
 } from './utils'
+import { gray, green, greenBright } from 'ansi-colors'
 import { strict as assert } from 'assert'
 
+// TODO: calculate this via AccountLayout
 const LamportsNeededToKeepAliveUntilRentExcempt = 4000
 type InitAccountOpts = {
   rentExcempt: boolean
@@ -38,10 +42,48 @@ const DefaultInitAccountOpts = {
 }
 
 export class Conn {
-  constructor(private readonly _connection: Connection) {}
+  constructor(
+    private readonly _connection: Connection,
+    private readonly _pubKeyLabels: Map<string, string> = new Map()
+  ) {}
 
   get connection(): Connection {
     return this._connection
+  }
+
+  // -----------------
+  // Pubkey Labels
+  // -----------------
+  addLabel(pubKey: PublicKey, label: string) {
+    this._pubKeyLabels.set(pubKey.toBase58(), label)
+    return this
+  }
+
+  private _label(pubKey: PublicKey) {
+    const base58 = pubKey.toBase58()
+    const label = this._pubKeyLabels.get(base58)
+    return label != null
+      ? `${greenBright(label)} (${green(base58.slice(0, 8))})`
+      : green(base58)
+  }
+
+  logLabels() {
+    let labels = 'Labels {'
+    for (const [key, val] of this._pubKeyLabels.entries()) {
+      const solUrl = Conn.solanaExplorerAddressUrlFromBase58(key)
+      labels += `\n  ${gray(key)}: ${greenBright(val)}`
+      labels += `\n    ${gray(solUrl)}`
+    }
+    labels += '\n}'
+    logDebug(labels)
+  }
+
+  jsonLabels() {
+    const record = {}
+    for (const [key, val] of this._pubKeyLabels.entries()) {
+      record[key] = val
+    }
+    return JSON.stringify(record, null, 2)
   }
 
   // -----------------
@@ -54,9 +96,9 @@ export class Conn {
   async airdrop(to: PublicKey, lamports: number) {
     const airdropSignature = await this._connection.requestAirdrop(to, lamports)
     await this._connection.confirmTransaction(airdropSignature)
-    logDebug(`Airdropped ${prettyLamports(lamports)} to: ${to}`)
+    logDebug(`Airdropped ${prettyLamports(lamports)} to: ${this._label(to)}`)
     logTrace(`Signature: ${airdropSignature}`)
-    logExpl(this.solanaExplorerTxUrl(airdropSignature))
+    logExpl(gray(this.solanaExplorerTxUrl(airdropSignature)))
 
     return airdropSignature
   }
@@ -90,6 +132,15 @@ export class Conn {
   }
 
   // -----------------
+  // Token
+  // -----------------
+  async getTokenBalance(pubkey: PublicKey) {
+    return parseInt(
+      (await this._connection.getTokenAccountBalance(pubkey)).value.amount
+    )
+  }
+
+  // -----------------
   // Account
   // -----------------
   async logBalance(account: PublicKey) {
@@ -108,15 +159,6 @@ export class Conn {
     return Math.round(sol100) / 100
   }
 
-  async logAccountInfo(account: PublicKey) {
-    const accountInfo = await this._connection.getAccountInfo(account)
-    if (accountInfo == null) {
-      logDebug(`AccountInfo { NOT FOUND, key: ${account.toBase58()} }`)
-    } else {
-      logDebug(prettyAccountInfo(accountInfo))
-    }
-  }
-
   async getAccountMinimumBalanceForRentExemption(account: PublicKey) {
     const accountInfo = await this._connection.getAccountInfo(account)
     assert(
@@ -127,6 +169,16 @@ export class Conn {
     const rentExcemptBalance =
       await this._connection.getMinimumBalanceForRentExemption(dataLen)
     return { rentExcemptBalance, currentBalance: accountInfo.lamports }
+  }
+
+  getMinimumBalanceForRentExemption(
+    dataLength: number,
+    commitment?: Commitment
+  ) {
+    return this._connection.getMinimumBalanceForRentExemption(
+      dataLength,
+      commitment
+    )
   }
 
   async makeAccountRentExcempt(account: PublicKey) {
@@ -171,6 +223,38 @@ export class Conn {
   }
 
   // -----------------
+  // Account Logging
+  // -----------------
+  async logLabeledAccountInfos(logExplorerUrl = true) {
+    for (const address of this._pubKeyLabels.keys()) {
+      const pubKey = new PublicKey(address)
+      await this.logAccountInfo(pubKey, logExplorerUrl)
+    }
+  }
+  async logAccountInfo(account: PublicKey, logExplorerUrl = false) {
+    const accountInfo = await this._connection.getAccountInfo(account)
+    if (accountInfo == null) {
+      logDebug(`AccountInfo { NOT FOUND, key: ${account.toBase58()} }`)
+    } else {
+      logDebug(
+        prettyAccountInfo(
+          accountInfo,
+          this._label(account),
+          this._label.bind(this)
+        )
+      )
+      if (logExplorerUrl) {
+        return this.logAccountExplorerUrl(account)
+      }
+    }
+  }
+
+  async logAccountExplorerUrl(account: PublicKey) {
+    const url = Conn.solanaExplorerAddressUrl(account)
+    logExpl('%s: %s', this._label(account), gray(url))
+  }
+
+  // -----------------
   // Cluster
   // -----------------
 <<<<<<< HEAD:sol-common/js/src/conn.ts
@@ -193,10 +277,11 @@ export class Conn {
   solanaExplorerTxUrl(key: string) {
     return `${EXPLORER_TX}/${key}?${Conn.solanaCluster()}`
   }
-  solanaExplorerAddressUrl(pubkey: PublicKey) {
+  static solanaExplorerAddressUrl(pubkey: PublicKey) {
     return `${EXPLORER_ADDRESS}/${pubkey.toBase58()}?${Conn.solanaCluster()}`
   }
 
+<<<<<<< HEAD
   static toSolanaCluster() {
 <<<<<<< HEAD:sol-common/js/src/conn.ts
 <<<<<<< HEAD:sol-common/js/src/conn.ts
@@ -207,5 +292,16 @@ export class Conn {
 =======
     return new Conn(new Connection(Conn.solanaClusterUrl(), 'confirmed'))
 >>>>>>> e0a358e (js: adding success + failure tests):transfer-lamports/js/src/conn.ts
+=======
+  static solanaExplorerAddressUrlFromBase58(base58: string) {
+    return `${EXPLORER_ADDRESS}/${base58}?${Conn.solanaCluster()}`
+  }
+
+  static toSolanaCluster(pubKeyLabels?: Map<string, string>) {
+    return new Conn(
+      new Connection(Conn.solanaClusterUrl(), 'confirmed'),
+      pubKeyLabels
+    )
+>>>>>>> d7ed47c (common: added features)
   }
 }

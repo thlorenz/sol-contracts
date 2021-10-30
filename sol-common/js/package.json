@@ -13,8 +13,8 @@
   "private": true,
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",
+    "@types/debug": "^4.1.7",
     "@types/node": "^16.11.4",
-    "debug": "^4.3.2",
     "prettier": "^2.4.1",
     "tape": "^5.3.1",
     "tslib": "^2.3.1",
@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.30.0",
+    "ansi-colors": "^4.1.1",
+    "buffer-layout": "^1.2.2",
     "debug": "^4.3.2",
     "supports-color": "^9.0.2"
   }

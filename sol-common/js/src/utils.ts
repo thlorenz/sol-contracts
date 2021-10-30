@@ -1,11 +1,15 @@
 import * as web from '@solana/web3.js'
 import { inspect } from 'util'
 
+import * as BufferLayout from 'buffer-layout'
+export * as BufferLayout from 'buffer-layout'
+
 import debug from 'debug'
-export const logInfo = debug('tx:info ')
-export const logDebug = debug('tx:debug')
-export const logTrace = debug('tx:trace')
-export const logExpl = debug('tx:url  ')
+export const logError = debug('sol:error')
+export const logInfo = debug('sol:info ')
+export const logDebug = debug('sol:debug')
+export const logTrace = debug('sol:trace')
+export const logExpl = debug('sol:url  ')
 
 type ConfirmedTransactionMetaWithStatus = web.ConfirmedTransactionMeta & {
   status?: Record<string, any>
@@ -31,7 +35,11 @@ export function prettyLamports(lamports: number) {
   return `${lamportsStr} (${solsStr})`
 }
 
-export function prettyAccountInfo<T>(info: web.AccountInfo<T>) {
+export function prettyAccountInfo<T>(
+  info: web.AccountInfo<T>,
+  accountLabel: string,
+  getLabel: (k: web.PublicKey) => string = (k) => k.toBase58()
+) {
   const { executable, owner, lamports, data, rentEpoch } = info
 
   const dataStr =
@@ -40,9 +48,9 @@ export function prettyAccountInfo<T>(info: web.AccountInfo<T>) {
       : Buffer.isBuffer(data)
       ? data.toString('hex')
       : data
-  return `AccountInfo {
+  return `${accountLabel}: AccountInfo {
   executable : ${executable}
-  owner      : ${owner}
+  owner      : ${getLabel(owner)}
   lamports   : ${prettyLamports(lamports)}
   data       : ${dataStr}
   rentEpoch  : ${rentEpoch}
@@ -107,9 +115,30 @@ export function logSeparator() {
 export const LOCAL_CLUSTER_URL = 'http://127.0.0.1:8899'
 
 // -----------------
+// Layouts
+// -----------------
+
+export const publicKey = (property = 'publicKey') => {
+  return BufferLayout.blob(32, property)
+}
+
+export const uint64 = (property = 'uint64') => {
+  return BufferLayout.blob(8, property)
+}
+
+// -----------------
 // Solana Explorer
 // -----------------
-export const EXPLORER_ROOT = 'https://explorer.solana.com'
+// const LIVE_EXPLORER_ROOT = 'https://explorer.solana.com'
+const LOCAL_EXPLORER_ROOT = 'http://localhost:3000'
+export const EXPLORER_ROOT = LOCAL_EXPLORER_ROOT
 export const EXPLORER_TX = `${EXPLORER_ROOT}/tx`
 export const EXPLORER_ADDRESS = `${EXPLORER_ROOT}/address`
 export const LOCAL_CLUSTER = `cluster=custom&customUrl=${LOCAL_CLUSTER_URL}`
+
+// -----------------
+// Convenience functions
+// -----------------
+export async function sleep(ms: number) {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
