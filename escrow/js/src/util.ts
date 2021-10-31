@@ -75,7 +75,10 @@ export async function logTokenAmounts(
   console.table([columns])
 }
 
-export function labelKnownAccounts(conn: Conn) {
+export function labelKnownAccounts(
+  conn: Conn,
+  extraKeys: Record<string, PublicKey> = {}
+) {
   // Alice
   const alice = getPublicKey('alice')
   const aliceX = getPublicKey('alice_x')
@@ -105,4 +108,8 @@ export function labelKnownAccounts(conn: Conn) {
     .addLabel(program, 'Program')
     .addLabel(mintX, 'Mint X')
     .addLabel(mintY, 'Mint Y')
+
+  for (const [label, pubkey] of Object.entries(extraKeys)) {
+    conn.addLabel(pubkey, label)
+  }
 }

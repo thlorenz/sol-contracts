@@ -7,7 +7,7 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
-    sysvar::{self, Sysvar},
+    sysvar::Sysvar,
 };
 
 use crate::{error::EscrowError, instruction::EscrowInstruction, state::Escrow};
@@ -60,8 +60,7 @@ impl Processor {
         // 4. escrow account (account 3)
         let escrow_account = next_account_info(account_iter)?;
 
-        // TODO: get it properly from sysvar
-        let rent = Rent::default();
+        let rent = Rent::get()?;
         if !rent.is_exempt(escrow_account.lamports(), escrow_account.data_len()) {
             return Err(EscrowError::NotRentExempt.into());
         }

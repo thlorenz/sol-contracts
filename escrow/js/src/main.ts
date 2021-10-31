@@ -20,6 +20,7 @@ const ADDRESS_LABELS_PATH = require.resolve(
 
 async function main() {
   const conn = Conn.toSolanaCluster()
+  let extraKeys = {}
 
   try {
     if (runSetup) {
@@ -30,13 +31,20 @@ async function main() {
 
     if (runAlice) {
       logInfo('Initializing Escrow')
-      const tmpXTokenAccountPubkey = await alice(conn)
+      const { tmpXTokenAccountPubkey, escrowAccountPubkey } = await alice(conn)
       await sleep(1000)
-      await logTokenAmounts(conn, { 'Tmp X': tmpXTokenAccountPubkey })
+      await logTokenAmounts(conn, {
+        'Tmp X': tmpXTokenAccountPubkey,
+      })
+
+      extraKeys = {
+        'Tmp X': tmpXTokenAccountPubkey,
+        Escrow: escrowAccountPubkey,
+      }
     }
   } finally {
     await sleep(1000)
-    labelKnownAccounts(conn)
+    labelKnownAccounts(conn, extraKeys)
 
     // Write account addresses to locally running solana explorer
     fs.writeFileSync(ADDRESS_LABELS_PATH, conn.jsonLabels(), 'utf8')

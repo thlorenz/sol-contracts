@@ -127,6 +127,17 @@ export const uint64 = (property = 'uint64') => {
 }
 
 // -----------------
+// Account Meta
+// -----------------
+export function accountMeta(
+  pubkey: web.PublicKey,
+  isWritable = false,
+  isSigner = false
+): web.AccountMeta {
+  return { pubkey, isWritable, isSigner }
+}
+
+// -----------------
 // Solana Explorer
 // -----------------
 // const LIVE_EXPLORER_ROOT = 'https://explorer.solana.com'

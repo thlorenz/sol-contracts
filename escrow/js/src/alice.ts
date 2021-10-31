@@ -1,9 +1,26 @@
 import { AccountLayout, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Keypair, SystemProgram, Transaction } from '@solana/web3.js'
+import {
+  Keypair,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+  Transaction,
+  TransactionInstruction,
+} from '@solana/web3.js'
+import BN from 'bn.js'
 import { Conn } from './conn'
-import { getKeypair, getProgramId, getPublicKey, getTerms, sleep } from './util'
+import {
+  ESCROW_ACCOUNT_DATA_LAYOUT,
+  getKeypair,
+  getProgramId,
+  getPublicKey,
+  getTerms,
+  sleep,
+  accountMeta,
+} from './util'
 
 export async function alice(conn: Conn) {
+  let space: number
+
   const escrowProgramId = getProgramId()
   const { aliceExpectedAmount, bobExpectedAmount } = getTerms()
 
@@ -19,7 +36,7 @@ export async function alice(conn: Conn) {
   conn.addLabel(tmpXTokenAccountKeypair.publicKey, 'Tmp X')
 
   // Create Tmp X
-  const space = AccountLayout.span
+  space = AccountLayout.span
   const createTmpTokenAccountIx = SystemProgram.createAccount({
     programId: TOKEN_PROGRAM_ID,
     space,
@@ -47,18 +64,55 @@ export async function alice(conn: Conn) {
   )
 
   // -----------------
+  // Create Escrow
+  // -----------------
+  const escrowKeypair = new Keypair()
+  space = ESCROW_ACCOUNT_DATA_LAYOUT.span
+  const createEscrowAccountIx = SystemProgram.createAccount({
+    space,
+    lamports: await conn.getMinimumBalanceForRentExemption(space),
+    fromPubkey: aliceKeypair.publicKey,
+    newAccountPubkey: escrowKeypair.publicKey,
+    programId: escrowProgramId,
+  })
+  // -----------------
+  // Init Escrow
+  // -----------------
+  const packedAmount = Uint8Array.of(
+    0,
+    ...new BN(aliceExpectedAmount).toArray('le', 8)
+  )
+
+  const initEscrowIx = new TransactionInstruction({
+    programId: escrowProgramId,
+    keys: [
+      accountMeta(aliceKeypair.publicKey, true, true),
+      accountMeta(tmpXTokenAccountKeypair.publicKey, true),
+      accountMeta(aliceTokenAccountPubkeyForY),
+      accountMeta(escrowKeypair.publicKey, true),
+      accountMeta(TOKEN_PROGRAM_ID),
+    ],
+    data: Buffer.from(packedAmount),
+  })
+
+  // -----------------
   // Send Transaction
   // -----------------
   const tx = new Transaction().add(
     createTmpTokenAccountIx,
     initTmpAccountIx,
-    transferXTokensToTmpAccIx
+    transferXTokensToTmpAccIx,
+    createEscrowAccountIx,
+    initEscrowIx
   )
   await conn.connection.sendTransaction(
     tx,
-    [aliceKeypair, tmpXTokenAccountKeypair /* escrowKeypair */],
+    [aliceKeypair, tmpXTokenAccountKeypair, escrowKeypair],
     { skipPreflight: false, preflightCommitment: 'confirmed' }
   )
 
-  return tmpXTokenAccountKeypair.publicKey
+  return {
+    tmpXTokenAccountPubkey: tmpXTokenAccountKeypair.publicKey,
+    escrowAccountPubkey: escrowKeypair.publicKey,
+  }
 }

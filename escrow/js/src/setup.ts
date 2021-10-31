@@ -57,11 +57,6 @@ export async function setup(conn: Conn) {
   const bobPubkey = getPublicKey('bob')
   const clientKeypair = getKeypair('id')
 
-  conn
-    .addLabel(alicePubkey, 'Alice')
-    .addLabel(bobPubkey, 'Bob')
-    .addLabel(clientKeypair.publicKey, 'Client')
-
   // -----------------
   // Init Alice, Bob and Client Account and drop them some Sols
   // -----------------
@@ -77,11 +72,6 @@ export async function setup(conn: Conn) {
     aliceTokenAccountPubkey: aliceTokenAccountPubkeyForX,
     bobTokenAccountPubkey: bobTokenAccountPubkeyForX,
   } = await setupMint(conn, 'X', alicePubkey, bobPubkey, clientKeypair)
-
-  conn
-    .addLabel(mintX.publicKey, 'Mint X')
-    .addLabel(aliceTokenAccountPubkeyForX, 'Alice X')
-    .addLabel(bobTokenAccountPubkeyForX, 'Bob X')
 
   /**
    * mintTo(
@@ -103,11 +93,6 @@ export async function setup(conn: Conn) {
     aliceTokenAccountPubkey: aliceTokenAccountPubkeyForY,
     bobTokenAccountPubkey: bobTokenAccountPubkeyForY,
   } = await setupMint(conn, 'Y', alicePubkey, bobPubkey, clientKeypair)
-
-  conn
-    .addLabel(mintY.publicKey, 'Mint Y')
-    .addLabel(aliceTokenAccountPubkeyForY, 'Alice Y')
-    .addLabel(bobTokenAccountPubkeyForY, 'Bob Y')
 
   await mintY.mintTo(bobTokenAccountPubkeyForY, clientKeypair.publicKey, [], 50)
 }
