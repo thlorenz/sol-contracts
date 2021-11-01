@@ -2,7 +2,6 @@ import { AccountLayout, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
 import {
   Keypair,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
   Transaction,
   TransactionInstruction,
 } from '@solana/web3.js'
@@ -14,7 +13,6 @@ import {
   getProgramId,
   getPublicKey,
   getTerms,
-  sleep,
   accountMeta,
 } from './util'
 

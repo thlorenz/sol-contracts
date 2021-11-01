@@ -1,7 +1,13 @@
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token'
-import { Connection, PublicKey, Signer } from '@solana/web3.js'
+import { PublicKey, Signer } from '@solana/web3.js'
 import { Conn } from './conn'
-import { getKeypair, getPublicKey, logInfo, writePublicKey } from './util'
+import {
+  getKeypair,
+  getPublicKey,
+  logDebug,
+  logInfo,
+  writePublicKey,
+} from './util'
 
 // -----------------
 // Minting
@@ -40,10 +46,12 @@ async function setupMint(
 
   logInfo('Creating Alice %s Token Account', name)
   const aliceTokenAccountPubkey = await mint.createAccount(alicePubkey)
+  logDebug('Writing Alice %s (%s)', name, aliceTokenAccountPubkey.toBase58())
   writePublicKey(aliceTokenAccountPubkey, `alice_${name.toLowerCase()}`)
 
   logInfo('Creating Bob %s Token Account', name)
   const bobTokenAccountPubkey = await mint.createAccount(bobPubkey)
+  logDebug('Writing Bob %s (%s)', name, bobTokenAccountPubkey.toBase58())
   writePublicKey(bobTokenAccountPubkey, `bob_${name.toLowerCase()}`)
 
   return { mint, aliceTokenAccountPubkey, bobTokenAccountPubkey }
@@ -67,11 +75,8 @@ export async function setup(conn: Conn) {
   // -----------------
   // Create Mint X and mint to Alice
   // -----------------
-  const {
-    mint: mintX,
-    aliceTokenAccountPubkey: aliceTokenAccountPubkeyForX,
-    bobTokenAccountPubkey: bobTokenAccountPubkeyForX,
-  } = await setupMint(conn, 'X', alicePubkey, bobPubkey, clientKeypair)
+  const { mint: mintX, aliceTokenAccountPubkey: aliceTokenAccountPubkeyForX } =
+    await setupMint(conn, 'X', alicePubkey, bobPubkey, clientKeypair)
 
   /**
    * mintTo(
@@ -88,11 +93,8 @@ export async function setup(conn: Conn) {
   // -----------------
   // Create Mint Y and mint to Bob
   // -----------------
-  const {
-    mint: mintY,
-    aliceTokenAccountPubkey: aliceTokenAccountPubkeyForY,
-    bobTokenAccountPubkey: bobTokenAccountPubkeyForY,
-  } = await setupMint(conn, 'Y', alicePubkey, bobPubkey, clientKeypair)
+  const { mint: mintY, bobTokenAccountPubkey: bobTokenAccountPubkeyForY } =
+    await setupMint(conn, 'Y', alicePubkey, bobPubkey, clientKeypair)
 
   await mintY.mintTo(bobTokenAccountPubkeyForY, clientKeypair.publicKey, [], 50)
 }

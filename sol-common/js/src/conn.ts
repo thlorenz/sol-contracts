@@ -20,13 +20,14 @@ import {
 >>>>>>> e0a358e (js: adding success + failure tests):transfer-lamports/js/src/conn.ts
   logConfirmedTransaction,
   logDebug,
+  logError,
   logExpl,
   logInfo,
   logTrace,
   prettyAccountInfo,
   prettyLamports,
 } from './utils'
-import { gray, green, greenBright } from 'ansi-colors'
+import { gray, green, greenBright, red } from 'ansi-colors'
 import { strict as assert } from 'assert'
 
 // TODO: calculate this via AccountLayout
@@ -59,12 +60,27 @@ export class Conn {
     return this
   }
 
-  private _label(pubKey: PublicKey) {
+  label(pubKey: PublicKey | Buffer | Uint8Array) {
+    if (Buffer.isBuffer(pubKey) || pubKey instanceof Uint8Array) {
+      pubKey = new PublicKey(pubKey)
+    }
+    return this._label(pubKey)
+  }
+
+  private _renderLabel(pubKey: PublicKey) {
+    if (pubKey == null) return red('<NULL>')
     const base58 = pubKey.toBase58()
     const label = this._pubKeyLabels.get(base58)
     return label != null
       ? `${greenBright(label)} (${green(base58.slice(0, 8))})`
       : green(base58)
+  }
+
+  private _label(pubKey: PublicKey) {
+    if (pubKey == null) return '<NULL>'
+    const base58 = pubKey.toBase58()
+    const label = this._pubKeyLabels.get(base58)
+    return label != null ? `${label} (${base58.slice(0, 8)})` : base58
   }
 
   logLabels() {
@@ -96,7 +112,9 @@ export class Conn {
   async airdrop(to: PublicKey, lamports: number) {
     const airdropSignature = await this._connection.requestAirdrop(to, lamports)
     await this._connection.confirmTransaction(airdropSignature)
-    logDebug(`Airdropped ${prettyLamports(lamports)} to: ${this._label(to)}`)
+    logDebug(
+      `Airdropped ${prettyLamports(lamports)} to: ${this._renderLabel(to)}`
+    )
     logTrace(`Signature: ${airdropSignature}`)
     logExpl(gray(this.solanaExplorerTxUrl(airdropSignature)))
 
@@ -135,14 +153,21 @@ export class Conn {
   // Token
   // -----------------
   async getTokenBalance(pubkey: PublicKey) {
-    return parseInt(
-      (await this._connection.getTokenAccountBalance(pubkey)).value.amount
-    )
+    try {
+      const balance = await this._connection.getTokenAccountBalance(pubkey)
+      return parseInt(balance.value.amount)
+    } catch (err) {
+      logError('Finding %s\n%s', pubkey.toBase58(), err)
+      return '<NOT FOUND>'
+    }
   }
 
   // -----------------
   // Account
   // -----------------
+  getAccountInfo(publicKey: PublicKey, commitment?: Commitment) {
+    return this._connection.getAccountInfo(publicKey, commitment)
+  }
   async logBalance(account: PublicKey) {
     const balance = await this._connection.getBalance(account)
     logDebug(`Balance ${account.toBase58()}: ${prettyLamports(balance)}`)
@@ -239,8 +264,8 @@ export class Conn {
       logDebug(
         prettyAccountInfo(
           accountInfo,
-          this._label(account),
-          this._label.bind(this)
+          this._renderLabel(account),
+          this._renderLabel.bind(this)
         )
       )
       if (logExplorerUrl) {
@@ -251,7 +276,7 @@ export class Conn {
 
   async logAccountExplorerUrl(account: PublicKey) {
     const url = Conn.solanaExplorerAddressUrl(account)
-    logExpl('%s: %s', this._label(account), gray(url))
+    logExpl('%s: %s', this._renderLabel(account), gray(url))
   }
 
   // -----------------

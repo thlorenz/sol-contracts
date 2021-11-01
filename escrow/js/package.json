@@ -5,6 +5,7 @@
   "main": "src/transfer-lamports.ts",
   "scripts": {
     "build": "tsc -p ./tsconfig.json",
+    "fresh-deploy": "sol-val-restart && sol-airdrop 2000 && (cd ../program/ && sol-deploy)",
     "setup": "DEBUG=*,-sol:trace SETUP=1 esr ./src/main.ts",
     "alice": "DEBUG=* ALICE=1 esr ./src/main.ts",
     "setup+alice": "DEBUG=*,-sol:trace SETUP=1 ALICE=1 esr ./src/main.ts",

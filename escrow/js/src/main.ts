@@ -1,50 +1,66 @@
 import fs from 'fs'
+import path from 'path'
 import { alice } from './alice'
 import { Conn } from './conn'
 import { setup } from './setup'
 import {
-  getPublicKey,
   labelKnownAccounts,
   logInfo,
   logTokenAmounts,
-  publicKey,
   sleep,
+  writePublicKey,
 } from './util'
+import { verifyInitializedEscrow } from './verify'
 
 const runSetup = !!process.env.SETUP
 const runAlice = !!process.env.ALICE
 
-const ADDRESS_LABELS_PATH = require.resolve(
+const ADDRESS_LABELS_PATH = path.resolve(
+  __dirname,
   '../../../../../solana-labs/solana/explorer/src/data/address-labels.json'
 )
 
 async function main() {
   const conn = Conn.toSolanaCluster()
+  labelKnownAccounts(conn)
+
   let extraKeys = {}
+  let extraTokens = {}
 
   try {
     if (runSetup) {
       logInfo('Setting up Accounts and Tokens')
       await setup(conn)
-      await logTokenAmounts(conn)
+      labelKnownAccounts(conn, extraKeys)
     }
 
     if (runAlice) {
       logInfo('Initializing Escrow')
       const { tmpXTokenAccountPubkey, escrowAccountPubkey } = await alice(conn)
       await sleep(1000)
-      await logTokenAmounts(conn, {
+
+      extraTokens = {
         'Tmp X': tmpXTokenAccountPubkey,
-      })
+      }
 
       extraKeys = {
         'Tmp X': tmpXTokenAccountPubkey,
         Escrow: escrowAccountPubkey,
       }
+
+      labelKnownAccounts(conn, extraKeys)
+
+      await sleep(1000)
+      await verifyInitializedEscrow(
+        conn,
+        escrowAccountPubkey,
+        tmpXTokenAccountPubkey
+      )
+
+      writePublicKey(escrowAccountPubkey, 'escrow')
     }
   } finally {
     await sleep(1000)
-    labelKnownAccounts(conn, extraKeys)
 
     // Write account addresses to locally running solana explorer
     fs.writeFileSync(ADDRESS_LABELS_PATH, conn.jsonLabels(), 'utf8')
@@ -53,7 +69,7 @@ async function main() {
 
     conn.logLabels()
 
-    await logTokenAmounts(conn)
+    await logTokenAmounts(conn, extraTokens)
   }
 }
 

@@ -12,7 +12,12 @@ import { Conn } from './conn'
 export * from '../../../sol-common/js/src/utils'
 
 export const getPublicKey = (name: string) =>
-  new PublicKey(require(`../keys/${name}_pub.json`))
+  new PublicKey(
+    // We don't require here in order to read fresh each time (require cache)
+    JSON.parse(
+      fs.readFileSync(require.resolve(`../keys/${name}_pub.json`), 'utf8')
+    )
+  )
 
 export const getPrivateKey = (name: string) =>
   Uint8Array.from(require(`../keys/${name}.json`))
@@ -53,6 +58,14 @@ export const ESCROW_ACCOUNT_DATA_LAYOUT = BufferLayout.struct([
   publicKey('initializerReceivingTokenAccountPubkey'),
   uint64('expectedAmount'),
 ])
+
+export type EscrowLayout = {
+  isInitialized: number
+  initializerPubkey: Uint8Array
+  initializerReceivingTokenAccountPubkey: Uint8Array
+  initializerTempTokenAccountPubkey: Uint8Array
+  expectedAmount: Uint8Array
+}
 
 export async function logTokenAmounts(
   conn: Conn,
