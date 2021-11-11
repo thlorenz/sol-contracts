@@ -3,6 +3,7 @@ import web, {
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
+  SendOptions,
   Signer,
   Transaction,
 } from '@solana/web3.js'
@@ -149,6 +150,21 @@ export class Conn {
     }
   }
 
+  async sendTransaction(
+    transaction: Transaction,
+    signers: Array<Signer>,
+    options?: SendOptions
+  ) {
+    const txSig = await this._connection.sendTransaction(
+      transaction,
+      signers,
+      options
+    )
+    logTrace(`Sig: ${txSig}`)
+    logExpl(this.solanaExplorerTxUrl(txSig))
+
+    return txSig
+  }
   // -----------------
   // Token
   // -----------------

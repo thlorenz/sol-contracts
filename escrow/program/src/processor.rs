@@ -2,7 +2,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::invoke,
+    program::{invoke, invoke_signed},
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
@@ -12,6 +12,7 @@ use solana_program::{
 
 use crate::{error::EscrowError, instruction::EscrowInstruction, state::Escrow};
 use spl_token::instruction::{set_authority, AuthorityType};
+use spl_token::state::Account as TokenAccount;
 
 pub struct Processor;
 impl Processor {
@@ -27,6 +28,10 @@ impl Processor {
             InitEscrow { amount } => {
                 msg!("Instruction: InitEscrow");
                 Self::process_init_escrow(program_id, accounts, amount)
+            }
+            EscrowInstruction::Exchange { amount } => {
+                msg!("Instruction: Exchange");
+                Self::process_exchange(program_id, accounts, amount)
             }
         }
     }
@@ -117,6 +122,156 @@ impl Processor {
             token_program.clone(),
         ];
         invoke(&owner_change_ix, account_infos)?;
+
+        Ok(())
+    }
+    fn process_exchange(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount_expected_by_taker: u64,
+    ) -> ProgramResult {
+        let account_iter = &mut accounts.iter();
+
+        // 1. taker (account 0) Bob
+        let taker = next_account_info(account_iter)?;
+        if !taker.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        // 2. token that taker sends (account 1) Bob Y
+        let takers_sending_token_account = next_account_info(account_iter)?;
+
+        // 3. token that taker receives ( account 2) Bob X
+        let takers_token_to_receive_account = next_account_info(account_iter)?;
+
+        // 4. PDA's tmp token account to get tokens from, which we'll close at the end (account 3)
+        let pdas_tmp_token_account = next_account_info(account_iter)?;
+        let pdas_tmp_token_account_info =
+            TokenAccount::unpack(&pdas_tmp_token_account.data.borrow())?;
+
+        if amount_expected_by_taker != pdas_tmp_token_account_info.amount {
+            return Err(EscrowError::ExpectedAmountMismatch.into());
+        }
+
+        let (pda, bump_seed) = Pubkey::find_program_address(&[b"escrow"], program_id);
+
+        // 5. initializer's main account to send rent fees to (account 4) Alice
+        let initializers_main_account = next_account_info(account_iter)?;
+
+        // 6. initializer's token account that will receive tokens (account 5) Alice Y
+        let initializers_token_to_receive_account = next_account_info(account_iter)?;
+
+        // 7.  escrow account holding the escrow info (account 6)
+        let escrow_account = next_account_info(account_iter)?;
+        let escrow_info = Escrow::unpack(&escrow_account.data.borrow())?;
+
+        if escrow_info.tmp_token_account_pubkey != *pdas_tmp_token_account.key {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if escrow_info.initializer_pubkey != *initializers_main_account.key {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        if escrow_info.initializer_token_to_receive_account_pubkey
+            != *initializers_token_to_receive_account.key
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        // 8. Token Program (account 7)
+        let token_program = next_account_info(account_iter)?;
+
+        // 9. PDA account (account 8)
+        let pda_account = next_account_info(account_iter)?;
+
+        // -----------------
+        // Transfers
+        // -----------------
+
+        // Transfer Bob's Y directly to Alice's Y
+        let transfer_to_initializer_ix = spl_token::instruction::transfer(
+            token_program.key,
+            // source
+            takers_sending_token_account.key,
+            // destination
+            initializers_token_to_receive_account.key,
+            // authority
+            taker.key,
+            // signer
+            &[&taker.key],
+            escrow_info.expected_amount,
+        )?;
+        msg!("Calling the token program to transfer tokens to the escrow's initializer...");
+        invoke(
+            &transfer_to_initializer_ix,
+            &[
+                takers_sending_token_account.clone(),
+                initializers_token_to_receive_account.clone(),
+                taker.clone(),
+                token_program.clone(),
+            ],
+        )?;
+
+        // Transfer Alice's X stored in tmp account during init to Bob's X
+        let transfer_to_taker_ix = spl_token::instruction::transfer(
+            token_program.key,
+            // source
+            pdas_tmp_token_account.key,
+            // destination
+            takers_token_to_receive_account.key,
+            // authority
+            &pda,
+            // signer
+            &[&pda],
+            pdas_tmp_token_account_info.amount,
+        )?;
+        msg!("Calling the token program to transfer tokens to the taker...");
+        invoke_signed(
+            &transfer_to_taker_ix,
+            &[
+                pdas_tmp_token_account.clone(),
+                takers_token_to_receive_account.clone(),
+                pda_account.clone(),
+                token_program.clone(),
+            ],
+            // signers_seeds: &[&[&[u8]]]
+            &[&[&b"escrow"[..], &[bump_seed]]],
+        )?;
+
+        // -----------------
+        // Cleanup
+        // -----------------
+
+        let close_pdas_tmp_acc_ix = spl_token::instruction::close_account(
+            token_program.key,
+            // account_pubkey
+            pdas_tmp_token_account.key,
+            // destination_pubkey
+            initializers_main_account.key,
+            // owner_pubkey
+            &pda,
+            // signer_pubkeys
+            &[&pda],
+        )?;
+        msg!("Calling the token program to close pda's temp account...");
+        invoke_signed(
+            &close_pdas_tmp_acc_ix,
+            &[
+                pdas_tmp_token_account.clone(),
+                initializers_main_account.clone(),
+                pda_account.clone(),
+                token_program.clone(),
+            ],
+            &[&[&b"escrow"[..], &[bump_seed]]],
+        )?;
+
+        msg!("Closing the escrow account...");
+        // Move remaining lamports from escrow to Alice and remove escrow data
+        **initializers_main_account.lamports.borrow_mut() = initializers_main_account
+            .lamports()
+            .checked_add(escrow_account.lamports())
+            .ok_or(EscrowError::AmountOverflow)?;
+        **escrow_account.lamports.borrow_mut() = 0;
+        *escrow_account.data.borrow_mut() = &mut [];
 
         Ok(())
     }

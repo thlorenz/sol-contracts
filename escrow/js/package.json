@@ -9,7 +9,8 @@
     "setup": "DEBUG=*,-sol:trace SETUP=1 esr ./src/main.ts",
     "alice": "DEBUG=* ALICE=1 esr ./src/main.ts",
     "setup+alice": "DEBUG=*,-sol:trace SETUP=1 ALICE=1 esr ./src/main.ts",
-    "bob": "DEBUG=* esr ./src/bob.ts"
+    "bob": "DEBUG=* BOB=1 esr ./src/main.ts",
+    "setup+alice+bob": "DEBUG=*,-sol:trace SETUP=1 ALICE=1 BOB=1 esr ./src/main.ts"
   },
   "repository": "git@github.com:thlorenz/sol-contracts.git",
   "author": "Thorsten Lorenz <thlorenz@gmx.de>",

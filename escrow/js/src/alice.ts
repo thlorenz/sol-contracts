@@ -14,6 +14,7 @@ import {
   getPublicKey,
   getTerms,
   accountMeta,
+  EscrowInstruction,
 } from './util'
 
 export async function alice(conn: Conn) {
@@ -73,12 +74,17 @@ export async function alice(conn: Conn) {
     newAccountPubkey: escrowKeypair.publicKey,
     programId: escrowProgramId,
   })
+
   // -----------------
   // Init Escrow
   // -----------------
-  const packedAmount = Uint8Array.of(
-    0,
-    ...new BN(aliceExpectedAmount).toArray('le', 8)
+
+  // 8-byte array of little-endian numbers -> unpacked as u64
+  // Need BN since u64::max > largest JS number
+  const packedAmount = new BN(aliceExpectedAmount).toArray('le', 8)
+  const packedIxData = Uint8Array.of(
+    EscrowInstruction.InitEscrow,
+    ...packedAmount
   )
 
   const initEscrowIx = new TransactionInstruction({
@@ -90,7 +96,7 @@ export async function alice(conn: Conn) {
       accountMeta(escrowKeypair.publicKey, true),
       accountMeta(TOKEN_PROGRAM_ID),
     ],
-    data: Buffer.from(packedAmount),
+    data: Buffer.from(packedIxData),
   })
 
   // -----------------
@@ -105,7 +111,11 @@ export async function alice(conn: Conn) {
   )
   await conn.connection.sendTransaction(
     tx,
-    [aliceKeypair, tmpXTokenAccountKeypair, escrowKeypair],
+    [
+      aliceKeypair, // pays fees and authorizes transfers from her account
+      tmpXTokenAccountKeypair, // SystemProgram.createAccount signed by keypair for account created
+      escrowKeypair, // SystemProgram.createAccount signed by keypair for account created
+    ],
     { skipPreflight: false, preflightCommitment: 'confirmed' }
   )
 

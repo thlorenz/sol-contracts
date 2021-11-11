@@ -67,6 +67,11 @@ export type EscrowLayout = {
   expectedAmount: Uint8Array
 }
 
+export enum EscrowInstruction {
+  InitEscrow = 0,
+  Exchange = 1,
+}
+
 export async function logTokenAmounts(
   conn: Conn,
   extraKeys: Record<string, PublicKey> = {}
