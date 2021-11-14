@@ -1,0 +1,31 @@
+{
+  "name": "transfer-lamports",
+  "version": "0.0.0",
+  "description": "JavaScript modules exercising our transfer-lamports contract",
+  "main": "src/transfer-lamports.ts",
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json",
+    "start": "DEBUG=* esr ./src/main.ts 4",
+    "test": "esr ./src/transfer-lamports.test.ts"
+  },
+  "repository": "git@github.com:thlorenz/sol-contracts.git",
+  "author": "Thorsten Lorenz <thlorenz@gmx.de>",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.1",
+    "@types/node": "^16.11.4",
+    "debug": "^4.3.2",
+    "prettier": "^2.4.1",
+    "tape": "^5.3.1",
+    "tslib": "^2.3.1",
+    "typescript": "^4.4.4"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.30.0",
+    "@types/debug": "^4.1.7",
+    "@types/tape": "^4.13.2",
+    "borsh": "^0.6.0",
+    "supports-color": "^9.0.2"
+  }
+}
