@@ -1,0 +1,13 @@
+{
+  "name": "sol-contracts",
+  "version": "0.0.0",
+  "description": "Collection of solana contract examples",
+  "main": "index.js",
+  "repository": "git@github.com:thlorenz/sol-contracts.git",
+  "author": "Thorsten Lorenz <thlorenz@gmx.de>",
+  "license": "MIT",
+  "workspaces": [
+    "packages/sol-common/js"
+  ],
+  "private": true
+}
